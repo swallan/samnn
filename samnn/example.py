@@ -1,5 +1,6 @@
 import numpy as np
 
+from CLayer import CLayer
 from Layer import Layer
 from Network import Network
 
@@ -125,11 +126,13 @@ else:
 
 
 net = Network(
-    Layer(128, 'relu'),
+    CLayer(128, 'relu'),
+    # Layer(128, 'relu'),
+
     Layer(n_classes, 'softmax')
 )
 
-cost, actual = net.train(inputs, targets, lr=.000001)
+cost, actual = net.train(inputs, targets, epochs=100, iterations=200, lr=.000005)
 
 
 output_label = np.argmax(actual, axis=1)
