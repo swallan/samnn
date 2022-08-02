@@ -5,10 +5,11 @@ from Network import Network
 
 from PIL import Image
 import os
+import sys
 
 # Load in all the images
 
-DIGITS = True
+DIGITS = int(sys.argv[1]) == 1
 
 
 if DIGITS:
@@ -62,6 +63,7 @@ else:
     inputs = np.asarray(inputs).astype(float) / 255
     target_temp = targets[:n_sample]
     targets = target_temp
+    names = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck']
     # flter = (target_temp.flatten() == 0) | (target_temp.flatten() == 1) | (target_temp.flatten() == 2) | (target_temp.flatten() == 3).flatten()
     # inputs = inputs[flter]
     # targets = targets[flter]
@@ -123,11 +125,7 @@ else:
 
 
 net = Network(
-    # Layer(128, 'relu'),
-    # Layer(32, 'relu'),
-    # Layer(20, 'relu'),
     Layer(128, 'relu'),
-
     Layer(n_classes, 'softmax')
 )
 
@@ -152,8 +150,11 @@ from scipy import ndimage
 for i in range(n_rows * n_classes):
 
     plt.subplot(n_rows, n_classes, i+1) # cols, rows
-    if i < n_classes: 
-        plt.title(i)
+    if i < n_classes:
+        if DIGITS:
+            plt.title(i)
+        else:
+            plt.title(names[i])
     what_class = i % n_classes
     idx = idxes[what_class]
     idxes[what_class] = idx + 1
