@@ -42,13 +42,15 @@ class Network:
         
     def train(self, data, target, epochs=100, iterations=100, lr=.001, rng=np.random.default_rng(1234)):
         output = None
+        diffs = []
 
         for i in range(epochs):
             # for each epoch, get a random subsample
-            subsample = rng.integers(low=0, high=len(data), size=200)
+            subsample = rng.integers(low=0, high=len(data), size=20)
             current_data = data[subsample]
             current_target = target[subsample]
             for j in range(iterations):
+                # print(f"iter: {j}")
 
                 output = self._forwards_propogate(current_data)
 
@@ -69,8 +71,20 @@ class Network:
                 if np.any(np.isnan(output)):
                     print(output)
                     raise ValueError(1)
-            self.losses.append(loss)
-            print(f'epoch:{i} loss: {loss:.04f}\tdiff: {loss - self.losses[-2]:.019f}')
+            op = self._forwards_propogate(data)
+            l = self.loss(op, target)
+            self.losses.append(l)
+            if l - self.losses[-2] > 0:
+                lr = lr / 10
+
+            # if np.mean(np.abs(diffs[-5:])) < 1:
+            #     break
+            diffs.append(l - self.losses[-2])
+            output_label = np.argmax(op, axis=1)
+            print(
+                f"{np.count_nonzero(output_label == np.argmax(target, axis=1)) / len(target) * 100}% correct prediction")
+
+            print(f'epoch:{i} loss: {l:.04f}\tdiff: {l - self.losses[-2]:.01f}')
 
         return loss, self._forwards_propogate(data)
     

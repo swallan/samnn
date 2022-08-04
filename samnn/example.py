@@ -13,7 +13,7 @@ import sys
 DIGITS = int(sys.argv[1]) == 1
 
 
-if DIGITS:
+if True:
 
 
     filePaths = ['samnn/data/0', 'samnn/data/1', 'samnn/data/2', 'samnn/data/3', 'samnn/data/4', 'samnn/data/5', 'samnn/data/6', 'samnn/data/7', 'samnn/data/8', 'samnn/data/9']#, 'samnn/data/2_','samnn/data/3_']#, 'samnn/data/4', 'samnn/data/5']
@@ -84,7 +84,8 @@ else:
     inputs = inputs[:n_sample]
     targets = targets[:n_sample]
 
-    imsize = (32, 32, 3)
+    imsize = (32, 32)
+    inputs = inputs.reshape(len(inputs), 32, 32, 3, order='F').sum(axis=-1).reshape(len(inputs), 32 * 32)
 
     
 # shape of w is dependent on the input. 
@@ -126,13 +127,17 @@ else:
 
 
 net = Network(
-    CLayer(128, 'relu'),
     # Layer(128, 'relu'),
+    #
+    # CLayer(5, 'relu'),
+
+    Layer(128, 'relu'),
+    Layer(128, 'relu'),
 
     Layer(n_classes, 'softmax')
 )
 
-cost, actual = net.train(inputs, targets, epochs=100, iterations=200, lr=.000005)
+cost, actual = net.train(inputs, targets, epochs=100, iterations=100, lr=.00005)
 
 
 output_label = np.argmax(actual, axis=1)
@@ -145,6 +150,7 @@ import matplotlib.pyplot as plt
 plt.figure(figsize=(10,10))
 
 
+# examine what the filters look
 
 # title = "\n".join([f"{actual[i][j]:<5.02f}" for j in range(n_classes)])
 n_rows = 10
