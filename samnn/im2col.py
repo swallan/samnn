@@ -49,13 +49,13 @@ def conv_im2col(input, w):
 
     # we need to put zero padding around the array so that it does not go out of bounds.
     hbw = int(np.floor(K / 2))
-    input_padded = np.pad(input, ((0, 0), (hbw, hbw), (hbw, hbw)))
+    input_padded = np.pad(input, ((0,0), (0, 0), (hbw, hbw), (hbw, hbw)))
 
     # grab each block from the input data.
     input_blocks_as_rows = []
-    for row in range(0, input_padded.shape[1] - hbw - 2, stride):
-        for col in range(0, input_padded.shape[2] - hbw - 2, stride):
-            block = input_padded[:, row:row + K, col: col + K]
+    for row in range(0, input_padded.shape[2] - hbw - 2, stride):
+        for col in range(0, input_padded.shape[3] - hbw - 2, stride):
+            block = input_padded[:, :, row:row + K, col: col + K]
             input_blocks_as_rows.append(block.flatten())
     input_blocks_as_col = np.transpose(input_blocks_as_rows)
 
@@ -65,12 +65,13 @@ def conv_im2col(input, w):
 
     # the dot product of these two can be reshaped to the proper output
     # dimension
-    res = w_reshaped @ input_blocks_as_col
-
+    res = w_reshaped @ input_blocks_as_col.reshape(ND, K**2 * n_channel, W*H)
+    print('w_reshaped',w_reshaped.shape, 'input_blocks_as_col.reshape(ND, K**2 * n_channel, W*H)',input_blocks_as_col.reshape(ND, K**2 * n_channel, W*H).shape)
+    print('res', res.shape)
     out_height = int((H + 2 * 2 - K) / stride + 1)
     out_width = int((W + 2 * 2 - K) / stride + 1)
-
-    res_reshaped = res.reshape(NK, out_height, out_width)
+    print(res.shape)
+    res_reshaped = res.reshape(ND, n_filter, out_height, out_width)
     return res_reshaped, (C, H, W, res.shape, input_blocks_as_col, input)
 
 def conv_im2col_backprop(grad_chain, w, cache, lr=.01):
@@ -80,10 +81,11 @@ def conv_im2col_backprop(grad_chain, w, cache, lr=.01):
     NK, C, K, K = w.shape
 
     # reshape to be n_filters x h x w
-    grad_reshaped = grad_chain.reshape(grad_chain.shape[0],
-                                       grad_chain.shape[1] ** 2)
-
-    grad_wrt_w = grad_reshaped @ input_blocks_as_col.T
+    grad_reshaped = grad_chain.reshape(grad_chain.shape[0], # n_data
+                                       NK, # n_channel
+                                       grad_chain.shape[2] ** 2)
+    input_blocks_as_col_reshaped = input_blocks_as_col.reshape(k * k, H*W, input.shape[0])
+    grad_wrt_w = grad_reshaped @ input_blocks_as_col_reshaped.T
     grad_wrt_w_reshaped = grad_wrt_w.reshape(w.shape)
     w = w - (grad_wrt_w_reshaped * lr)
 
@@ -107,12 +109,14 @@ def conv_im2col_backprop(grad_chain, w, cache, lr=.01):
 
     return output_unpadded
 
-
-data = np.arange(5 * 3 * 28 * 28).reshape(5, 3, 28, 28)
-filter = np.arange(7 * 5 * 5 * 3).reshape(7, 3, 5, 5)
-
+n_data, n_channel, h, w = 10, 1, 28, 28
+n_filter, k, = 1, 5
+data = np.arange(n_data * n_channel * h * w).reshape(n_data, n_channel, h, w)
+filter = np.zeros((n_filter, n_channel, k, k))
+filter[:,:,2:3,2:3] = 1
 o, cache = conv_im2col(data, filter)
-
+print(o.shape)
+assert np.all(o == data)
 print(conv_im2col_backprop(o, filter, cache))
 
 

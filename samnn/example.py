@@ -2,6 +2,7 @@ import numpy as np
 
 from CLayer import CLayer
 from Layer import Layer
+from MaxPool import MaxPool
 from Network import Network
 
 from PIL import Image
@@ -13,7 +14,7 @@ import sys
 DIGITS = int(sys.argv[1]) == 1
 
 
-if True:
+if DIGITS:
 
 
     filePaths = ['samnn/data/0', 'samnn/data/1', 'samnn/data/2', 'samnn/data/3', 'samnn/data/4', 'samnn/data/5', 'samnn/data/6', 'samnn/data/7', 'samnn/data/8', 'samnn/data/9']#, 'samnn/data/2_','samnn/data/3_']#, 'samnn/data/4', 'samnn/data/5']
@@ -21,17 +22,29 @@ if True:
     inputs = []
     targets = []
 
-    for fp in filePaths:
-        for fileName in os.listdir(fp):
-            try:
-                inputs.append(Image.open(fp + '/' + fileName).getdata())
-                # one_hot = [0, 0]
-                # one_hot[int(fp.split('/')[-1])] = 1
-                targets.append([int(fp.split('/')[-1].replace('_', ""))])
-            except Exception as e:
-                print(e)
-
+    # for fp in filePaths:
+    #     for fileName in os.listdir(fp):
+    #         try:
+    #             inputs.append(Image.open(fp + '/' + fileName).getdata())
+    #             # one_hot = [0, 0]
+    #             # one_hot[int(fp.split('/')[-1])] = 1
+    #             targets.append([int(fp.split('/')[-1].replace('_', ""))])
+    #         except Exception as e:
+    #             print(e)
+    # np.save('ip', inputs)
+    # np.save('t', targets)
+    # raise ValueError()
+    inputs = np.load('ip.npy')
+    targets = np.load('t.npy')
     inputs = np.asarray(inputs) / 255
+
+    from skimage.transform import resize
+    inputs = inputs.reshape(10000, 28, 28)
+    inputs = resize(inputs, (10000, 28, 28))
+    inputs = inputs.reshape(10000, 28 * 28)
+
+
+
     target_temp = np.asarray(targets)
     targets = np.zeros((target_temp.size, target_temp.max()+1))
     targets[np.arange(target_temp.size),target_temp] = 1
@@ -44,10 +57,18 @@ if True:
 
 
     n_sample = 1000
-    inputs = inputs[shuffle_idx]#[:n_sample]
-    targets = targets[shuffle_idx]#[:n_sample]
-    n_features = 784
+    inputs_all = np.array(inputs, copy=True)
+    targets_all = np.array(targets, copy=True)
+    inputs = inputs_all[shuffle_idx][:n_sample]
+    targets = targets_all[shuffle_idx][:n_sample]
+    n_features = 28 * 28
     imsize = 28, 28
+    inputs = inputs.reshape(inputs.shape[0],*imsize,  1)
+
+    val_input = inputs_all[shuffle_idx][n_sample:n_sample * 2]
+    val_target = targets_all[shuffle_idx][n_sample:n_sample * 2]
+    val_input = val_input.reshape(val_input.shape[0], *imsize,  1)
+
 
 
 else:
@@ -85,7 +106,10 @@ else:
     targets = targets[:n_sample]
 
     imsize = (32, 32)
-    inputs = inputs.reshape(len(inputs), 32, 32, 3, order='F').sum(axis=-1).reshape(len(inputs), 32 * 32)
+    inputs = inputs.reshape(len(inputs),  32, 32, 3,order='F')#.sum(axis=-1).reshape(len(inputs), 32 * 32)
+    from skimage.transform import resize
+    # inputs = resiz3
+    # inputs = inputs.reshape(inputs.shape[0],*imsize,  1)
 
     
 # shape of w is dependent on the input. 
@@ -125,19 +149,41 @@ else:
 # # hidden layer number of nodes
 # n_hidden = 5
 
-
+from FullyConnectedLayer import FullyConnectedLayer
+from Softmax import Softmax
+from Relu import Relu
+from Flatten import Flatten
 net = Network(
     # Layer(128, 'relu'),
     #
     # CLayer(5, 'relu'),
 
-    Layer(128, 'relu'),
-    Layer(128, 'relu'),
+    # Layer(128, 'relu'),
+    # Layer(128, 'relu'),
+    # MaxPool(),
+    # CLayer(),
+    # Flatten(True),
+    CLayer(n_channels=3, n_filters=16, stride=1),
+    Relu(),
+    CLayer(n_channels=16, n_filters=20, stride=2),
+    Relu(),
+    CLayer(n_channels=20, n_filters=20, stride=2),
+    Relu(),
 
-    Layer(n_classes, 'softmax')
+
+    Flatten(True),
+
+    #
+    # FullyConnectedLayer(32),
+    # Relu(),
+
+    FullyConnectedLayer(n_classes),
+    Softmax(),
+    names=names
 )
-
-cost, actual = net.train(inputs, targets, epochs=100, iterations=100, lr=.00005)
+print('starting...')
+cost, actual = net.train(inputs, targets, epochs=100, iterations=100, lr=.0005, )
+                         # val_input=val_input, val_target=val_target)
 
 
 output_label = np.argmax(actual, axis=1)
@@ -151,7 +197,7 @@ plt.figure(figsize=(10,10))
 
 
 # examine what the filters look
-
+np.save("net.npy", net)
 # title = "\n".join([f"{actual[i][j]:<5.02f}" for j in range(n_classes)])
 n_rows = 10
 from scipy import ndimage
@@ -171,7 +217,7 @@ for i in range(n_rows * n_classes):
     if len(sorted_by_type[what_class]) > idx:
         plt.tight_layout()
         if DIGITS:
-            img = ndimage.rotate(sorted_by_type[what_class][idx].reshape(*imsize, order='F').T, 0)
+            img = ndimage.rotate(sorted_by_type[what_class][idx].reshape(*imsize, order='F'), 0)
         else:
             img = ndimage.rotate(sorted_by_type[what_class][idx].reshape(*imsize, order='F'), -90)
         plt.imshow(img)
